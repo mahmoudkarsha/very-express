@@ -1,4 +1,3 @@
-````markdown
 # Very-Express.JS
 
 A lightweight, configurable Express server setup with integrated MongoDB support, CORS options, and customizable JSON handling. `VeryExpress` simplifies the process of building robust API backends by providing a streamlined API for route, middleware, and error management, as well as automated logging and development conveniences.
@@ -37,7 +36,6 @@ const server = veryExpress({
     jsonSizeLimit: '1mb', // Limit JSON payloads to 1mb
 });
 ```
-````
 
 ### Configuration Options
 
