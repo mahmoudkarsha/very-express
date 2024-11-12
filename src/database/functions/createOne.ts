@@ -1,12 +1,5 @@
-import {
-    VeryRequest,
-    VeryResponse,
-    VeryNextFunction,
-    CreateOneSuccessResponse,
-    CreateOneOptions,
-    Db,
-    CreateObject,
-} from '../../types';
+import { WithId } from 'mongodb';
+import { Req, Res, Next, CreateOneSuccessResponse, CreateOneOptions, Db, CreateObject } from '../../types';
 import { catchErrors } from '../../utils';
 
 /**
@@ -62,17 +55,13 @@ function isCreateOneOptions<T>(options: any): options is CreateOneOptions<T> {
  * //   response_created_at: 1698531200000
  * // }
  */
-async function _createOne<T extends Document>(
-    table: string,
-    db: Db,
-    createObject: CreateObject<T>,
-    options?: CreateOneOptions<T>,
-): Promise<CreateOneSuccessResponse> {
-    let result = await db.collection(table).insertOne(createObject);
+async function _createOne<T>(table: string, db: Db, createObject: CreateObject<T>, options?: CreateOneOptions<T>): Promise<CreateOneSuccessResponse> {
+    // 1. Validate `createObject` against the document type
+    let result = await db.collection<WithId<T>>(table).insertOne(createObject);
 
     const response: CreateOneSuccessResponse = {
         status: 'success',
-        data: result, // returns null if no match
+        data: createObject, // returns null if no match
         table,
         message: options?.returnedMessage,
         response_created_at: Date.now(),
@@ -97,7 +86,7 @@ async function _createOne<T extends Document>(
  *
  * @example
  * // Middleware to set `db_options` and `create_object`
- * function setCreateOptions(req: VeryRequest<User>, res: Response, next: NextFunction) {
+ * function setCreateOptions(req: Req<User>, res: Response, next: NextFunction) {
  *     req.db_options = { returnedMessage: "User created successfully" };
  *     req.create_object = { name: "Alice", age: 25 }; // Document data for the new user
  *     next();
@@ -117,19 +106,14 @@ async function _createOne<T extends Document>(
  * //   response_created_at: 1698531200000
  * // }
  */
-function createOne<T extends Document>(table: string) {
-    return catchErrors(async function (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) {
+function createOne<T>(table: string) {
+    return catchErrors(async function (req: Req, res: Res, next: Next) {
         // Check if the request options are valid and create_object and db are set
         if (!isCreateOneOptions(req.db_options)) return;
         if (!req.create_object || !req.db) throw new Error(`Create`);
 
         // Insert the document into the specified table and return a success response
-        const response: CreateOneSuccessResponse = await _createOne<T>(
-            table,
-            req.db,
-            req.create_object,
-            req.db_options,
-        );
+        const response: CreateOneSuccessResponse = await _createOne<T>(table, req.db, req.create_object, req.db_options);
 
         // Respond with a 201 Created status and the structured success response
         res.status(201).json(response);

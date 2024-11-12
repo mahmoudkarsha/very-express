@@ -1,12 +1,4 @@
-import {
-    VeryRequest,
-    VeryResponse,
-    VeryNextFunction,
-    UpdateOneSuccessResponse,
-    UpdateOneOptions,
-    Db,
-    UpdateObject,
-} from '../../types';
+import { Req, Res, Next, UpdateOneSuccessResponse, UpdateOneOptions, Db, UpdateObject } from '../../types';
 import { catchErrors, id } from '../../utils';
 import { Document, FindOneAndUpdateOptions } from 'mongodb';
 import { DocumentNotExistError } from '../../errors';
@@ -72,12 +64,7 @@ function isUpdateOneOptions<T>(options: any): options is UpdateOneOptions<T> {
  * //   response_created_at: 1698531200000
  * // }
  */
-async function _updateOne<T extends Document>(
-    table: string,
-    db: Db,
-    updateObject: UpdateObject<T>,
-    options: UpdateOneOptions<T>,
-): Promise<UpdateOneSuccessResponse> {
+async function _updateOne<T extends Document>(table: string, db: Db, updateObject: UpdateObject<T>, options: UpdateOneOptions<T>): Promise<UpdateOneSuccessResponse> {
     // 1. Convert `_id` if it's in the filter
     if (options?.filter && options.filter && options.filter?._id) {
         try {
@@ -130,7 +117,7 @@ async function _updateOne<T extends Document>(
  *
  * @example
  * // Middleware to set `db_options` and `update_object` for the update operation
- * function setUpdateOptions(req: VeryRequest<User>, res: Response, next: NextFunction) {
+ * function setUpdateOptions(req: Req<User>, res: Response, next: NextFunction) {
  *     req.db_options = {
  *         filter: { _id: "60d0fe4f5311236168a109ca" },
  *         returnNew: true,
@@ -156,7 +143,7 @@ async function _updateOne<T extends Document>(
  * // }
  */
 function updateOne<T extends Document>(table: string) {
-    return catchErrors(async function (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) {
+    return catchErrors(async function (req: Req, res: Res, next: Next) {
         // Check if `db_options` and `update_object` are valid
         if (!isUpdateOneOptions(req.db_options) || !req.update_object || !req.db_options.filter || !req.db) {
             throw new Error('Update parameters are not available or are invalid');

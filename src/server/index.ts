@@ -9,10 +9,10 @@
 
 import express, { Router } from 'express';
 import { exec } from 'child_process';
-import { VeryNextFunction, VeryRequest, VeryResponse, ErrorHandler, Middleware } from '../types';
+import { Next, Req, Res, ErrorHandler, Middleware, CustomErrorMessages, ServerOptions } from '../types';
 import { blueBgLog } from '../logger';
-import { CustomErrorMessages, VeryServerOptions } from '../types';
 import { errorMessages } from '../errors/errorMessages';
+import { createServer } from 'http';
 import cors from 'cors';
 
 let customErrorMessages = { ...errorMessages };
@@ -22,14 +22,14 @@ let customErrorMessages = { ...errorMessages };
  * Provides methods for route management, middleware application, and custom error handling.
  * Optionally opens the server's URL in the default browser upon receiving the "open" command.
  *
- * @param {VeryServerOptions} options - Configuration options for server setup:
+ * @param {ServerOptions} options - Configuration options for server setup:
  *    - `port`: Port number for the server.
  *    - `corsOptions`: CORS settings.
  *    - `parseJson`: Flag to enable JSON body parsing.
  *    - `jsonSizeLimit`: Maximum size of JSON payloads.
  * @returns {object} - Server API with methods for managing routes, middlewares, and error handling.
  */
-const veryServer = (options: VeryServerOptions) => {
+const veryServer = (options: ServerOptions) => {
     const { port, corsOptions, parseJson, jsonSizeLimit } = options;
     const app = express();
 
@@ -41,7 +41,8 @@ const veryServer = (options: VeryServerOptions) => {
     }
 
     // Starts the server and listens on the specified port
-    app.listen(port, () => {
+    const server = createServer(app);
+    server.listen(port, () => {
         blueBgLog(`Server is running at http://localhost:${port}`);
     });
 
@@ -55,6 +56,7 @@ const veryServer = (options: VeryServerOptions) => {
 
     return {
         app,
+        server,
         /**
          * Adds multiple middleware functions to the Express app.
          *
@@ -100,7 +102,7 @@ const veryServer = (options: VeryServerOptions) => {
          * @param {any} response - JSON response sent when no routes match the request.
          */
         notFound(response: any) {
-            app.use('*', function (req: VeryRequest, res: VeryResponse) {
+            app.use('*', function (req: Req, res: Res) {
                 res.status(404).json(response);
             });
         },
@@ -110,19 +112,11 @@ const veryServer = (options: VeryServerOptions) => {
          *
          * @param {ErrorHandler} cb - Callback function for error handling.
          */
-        errorHandler(cb: ErrorHandler) {
+        setErrorHandler(cb: ErrorHandler) {
             app.use(cb);
         },
     };
 };
 
 // Exports for setting up an Very server, router, and associated types
-export {
-    customErrorMessages,
-    CustomErrorMessages,
-    veryServer,
-    Router as VeryRouter,
-    VeryRequest,
-    VeryResponse,
-    VeryNextFunction,
-};
+export { customErrorMessages, CustomErrorMessages, veryServer, Router as VeryRouter, Req, Res, Next };

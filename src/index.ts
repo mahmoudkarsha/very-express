@@ -8,3 +8,4 @@ export * from './utils';
 export * from './errors';
 export * from './logger';
 export * from './email';
+export * from './password';

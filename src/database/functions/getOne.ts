@@ -1,4 +1,4 @@
-import { VeryRequest, VeryResponse, VeryNextFunction, GetOneSuccessResponse, GetOneOptions, Db } from '../../types';
+import { Req, Res, Next, GetOneSuccessResponse, GetOneOptions, Db } from '../../types';
 import { catchErrors, id } from '../../utils';
 
 /**
@@ -67,11 +67,7 @@ function isGetOneOptions<T>(options: any): options is GetOneOptions<T> {
  * //   response_created_at: 1698531200000
  * // }
  */
-async function _getOne<T extends Document>(
-    table: string,
-    db: Db,
-    options?: GetOneOptions<T>,
-): Promise<GetOneSuccessResponse> {
+async function _getOne<T extends Document>(table: string, db: Db, options?: GetOneOptions<T>): Promise<GetOneSuccessResponse> {
     // Convert `_id` in the filter to ObjectId if necessary
     if (options?.filter && options.filter._id) {
         options.filter._id = id(options.filter._id);
@@ -81,13 +77,7 @@ async function _getOne<T extends Document>(
     let result = await db.collection(table).findOne(options?.filter || {}); // Defaults to an empty filter if undefined
 
     // Perform lookup if specified in options and if a document is found
-    if (
-        result &&
-        options?.lookup &&
-        options.lookup.foreign_collection &&
-        options.lookup.foreign_field &&
-        options.lookup.local_field
-    ) {
+    if (result && options?.lookup && options.lookup.foreign_collection && options.lookup.foreign_field && options.lookup.local_field) {
         const { foreign_collection, foreign_field, local_field, as } = options.lookup;
         const asField = as || local_field; // Use `as` if provided, otherwise `local_field`
         const filter: any = { [foreign_field]: result[local_field] };
@@ -126,7 +116,7 @@ async function _getOne<T extends Document>(
  *
  * @example
  * // Middleware to set `db_options` for the get operation
- * function setGetOneOptions(req: VeryRequest<User>, res: Response, next: NextFunction) {
+ * function setGetOneOptions(req: Req<User>, res: Response, next: NextFunction) {
  *     req.db_options = {
  *         filter: { _id: "60d0fe4f5311236168a109ca" },
  *         lookup: {
@@ -155,7 +145,7 @@ async function _getOne<T extends Document>(
  * // }
  */
 function getOne<T extends Document>(table: string) {
-    return catchErrors(async function (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) {
+    return catchErrors(async function (req: Req, res: Res, next: Next) {
         // Check if request options and database instance are set
         if (!isGetOneOptions(req.db_options) || !req.db) return;
 

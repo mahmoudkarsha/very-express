@@ -1,11 +1,4 @@
-import {
-    VeryRequest,
-    VeryResponse,
-    VeryNextFunction,
-    DeleteOneSuccessResponse,
-    DeleteOneOptions,
-    Db,
-} from '../../types';
+import { Req, Res, Next, DeleteOneSuccessResponse, DeleteOneOptions, Db } from '../../types';
 import { id, catchErrors } from '../../utils';
 import { DocumentNotExistError } from '../../errors';
 
@@ -60,11 +53,7 @@ function isDeleteOneOptions<T>(options: any): options is DeleteOneOptions<T> {
  * //   response_created_at: 1698531200000
  * // }
  */
-async function _deleteOne<T extends Document>(
-    table: string,
-    db: Db,
-    options?: DeleteOneOptions<T>,
-): Promise<DeleteOneSuccessResponse> {
+async function _deleteOne<T extends Document>(table: string, db: Db, options?: DeleteOneOptions<T>): Promise<DeleteOneSuccessResponse> {
     // Convert `_id` to ObjectId if it's present in the filter
     if (options?.filter && options.filter._id) {
         options.filter._id = id(options.filter._id);
@@ -103,7 +92,7 @@ async function _deleteOne<T extends Document>(
  *
  * @example
  * // Middleware to set `db_options` for the delete operation
- * function setDeleteOptions(req: VeryRequest<User>, res: Response, next: NextFunction) {
+ * function setDeleteOptions(req: Req<User>, res: Response, next: NextFunction) {
  *     req.db_options = {
  *         filter: { _id: "60d0fe4f5311236168a109ca" },
  *         returnedMessage: "Document successfully deleted"
@@ -125,7 +114,7 @@ async function _deleteOne<T extends Document>(
  * // }
  */
 function deleteOne<T extends Document>(table: string) {
-    return catchErrors(async function (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) {
+    return catchErrors(async function (req: Req, res: Res, next: Next) {
         // Validate delete options and ensure database instance exists
         if (!isDeleteOneOptions(req.db_options) || !req.db) return;
 

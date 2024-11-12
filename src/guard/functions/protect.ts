@@ -1,24 +1,15 @@
 import { _getOne } from '../../database';
 import { JwtService, JwtTokenExpiredError, JsonWebTokenError, NotBeforeError } from '../../jwt';
-import { VeryNextFunction, VeryRequest, VeryResponse } from '../../types';
+import { Db, Next, Req, Res } from '../../types';
 import { catchErrors, id } from '../../utils';
 import { toInt, toStr } from '../../parsers';
-import {
-    DevelopmentError,
-    InvalidTokenError,
-    NotLoggedInError,
-    PermissionDeniedError,
-    TokenExpiredError,
-    UserNoLongerExistsError,
-} from '../../errors';
-import { redBgLog } from '../../logger';
-
+import { DevelopmentError, InvalidTokenError, NotLoggedInError, PermissionDeniedError, TokenExpiredError, UserNoLongerExistsError } from '../../errors';
+import { Socket, ExtendedError } from 'socket.io';
+import { configDotenv } from 'dotenv';
+import { Langs } from '../../../src/config';
+configDotenv();
 const secret = toStr(process.env?.JWT_SECRET, 'change this secret');
 const tokenExpirationInSeconds = toInt(process.env?.JWT_EXPIRATION_IN_SECONDS, 60 * 60);
-
-if (!process.env.JWT_EXPIRATION_IN_SECONDS || !process.env?.JWT_SECRET) {
-    redBgLog('Please specify a JWT secret and a JWT expiration in seconds in the .env file');
-}
 
 const jwtService = new JwtService(secret, tokenExpirationInSeconds);
 
@@ -41,18 +32,14 @@ const jwtService = new JwtService(secret, tokenExpirationInSeconds);
  * @throws {PermissionDeniedError} - If the authenticated user's role does not match the required roles.
  */
 const protect = (...roles: string[]) =>
-    catchErrors(async function <T = any, L extends string = string>(
-        req: VeryRequest<T, L>,
-        res: VeryResponse,
-        next: VeryNextFunction,
-    ) {
+    catchErrors(async function <T = any, L extends string = string>(req: Req<T, L>, res: Res, next: Next) {
         if (!req.db) throw new DevelopmentError('Please assign a database to the request');
 
         // Retrieve token from header or cookies
         let token;
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
-        } else if (req.cookies.jwt) {
+        } else if (req.cookies && req.cookies.jwt) {
             token = req.cookies.jwt;
         }
 
@@ -60,7 +47,6 @@ const protect = (...roles: string[]) =>
         if (!token) {
             throw new NotLoggedInError(req.language); // `req.language` now uses type `L`
         }
-
         // Verify token
         let decoded;
         try {
@@ -87,12 +73,12 @@ const protect = (...roles: string[]) =>
             },
         });
 
-        if (!currentUser) {
+        if (!currentUser.data) {
             throw new UserNoLongerExistsError<L>(decoded.id, req.language);
         }
 
         // Assign user to request object
-        req.user = currentUser;
+        req.user = currentUser.data;
 
         // Check for role authorization
         if (!roles.includes('*') && !roles.includes(req.user.role)) {
@@ -102,4 +88,62 @@ const protect = (...roles: string[]) =>
         next();
     });
 
-export { protect };
+const socketProtect = (...roles: string[]) => {
+    return async (socket: Socket, db: Db, next: (error?: ExtendedError) => void) => {
+        if (!db) throw new DevelopmentError('Please assign a database to the request');
+        // Retrieve token from header or cookies
+        let token;
+        let lang = socket.handshake.query?.language as Langs;
+        if (socket && socket.handshake.auth && socket.handshake.auth.token && typeof socket.handshake.auth.token === 'string' && socket.handshake.auth.token.startsWith('Bearer')) {
+            token = socket.handshake.auth.token.split(' ')[1];
+        } else if (socket.handshake.headers && socket.handshake.headers.authorization) {
+            token = socket.handshake.headers.authorization;
+        }
+
+        // Check if token is present
+        if (!token) {
+            return next(new NotLoggedInError(lang)); // `req.language` now uses type `L`
+        }
+        // Verify token
+        let decoded;
+        try {
+            decoded = await jwtService.verifyToken(token);
+        } catch (error) {
+            if (error instanceof JwtTokenExpiredError) {
+                return next(new TokenExpiredError(error.expiredAt.getTime(), lang));
+            } else if (error instanceof JsonWebTokenError) {
+                return next(new InvalidTokenError(lang));
+            } else if (error instanceof NotBeforeError) {
+                return next(new TokenExpiredError(error.date.getTime(), lang));
+            } else throw error;
+        }
+
+        // Check if token payload has a valid user ID
+        if (!decoded || !decoded.id) {
+            return next(new InvalidTokenError(lang));
+        }
+
+        // Retrieve current user from the database
+        const currentUser = await _getOne('users', db, {
+            filter: {
+                _id: id(decoded.id),
+            },
+        });
+
+        if (!currentUser.data) {
+            return next(new UserNoLongerExistsError<Langs>(decoded.id, lang));
+        }
+
+        // Assign user to request object
+        socket.user = currentUser.data;
+
+        // Check for role authorization
+        if (!roles.includes('*') && !roles.includes(socket.user.role)) {
+            return next(new PermissionDeniedError<Langs>('socket io', lang));
+        }
+
+        return next();
+    };
+};
+
+export { protect, socketProtect };

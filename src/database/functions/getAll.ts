@@ -1,4 +1,4 @@
-import { VeryRequest, VeryResponse, VeryNextFunction, GetAllSuccessResponse, GetAllOptions, Db } from '../../types';
+import { Req, Res, Next, GetAllSuccessResponse, GetAllOptions, Db } from '../../types';
 import { catchErrors, id } from '../../utils';
 
 /**
@@ -87,11 +87,7 @@ function isGetAllOptions<T>(options: any): options is GetAllOptions<T> {
  * //   response_created_at: 1698531200000
  * // }
  */
-async function _getAll<T extends Document>(
-    table: string,
-    db: Db,
-    options?: GetAllOptions<T>,
-): Promise<GetAllSuccessResponse> {
+async function _getAll<T extends Document>(table: string, db: Db, options?: GetAllOptions<T>): Promise<GetAllSuccessResponse> {
     const page = options?.page || 1;
     const limit = options?.limit || 20;
     const sort = options?.sort || {};
@@ -111,12 +107,7 @@ async function _getAll<T extends Document>(
         .toArray();
 
     // Perform lookups if lookup options are provided
-    if (
-        options?.lookup &&
-        options.lookup.foreign_collection &&
-        options.lookup.foreign_field &&
-        options.lookup.local_field
-    ) {
+    if (options?.lookup && options.lookup.foreign_collection && options.lookup.foreign_field && options.lookup.local_field) {
         const { foreign_collection, foreign_field, local_field, as } = options.lookup;
         const asField = as || local_field; // Use `as` if provided, otherwise `local_field`
 
@@ -165,7 +156,7 @@ async function _getAll<T extends Document>(
  *
  * @example
  * // Middleware to set `db_options` for the get operation
- * function setGetAllOptions(req: VeryRequest<User>, res: Response, next: NextFunction) {
+ * function setGetAllOptions(req: Req<User>, res: Response, next: NextFunction) {
  *     req.db_options = {
  *         filter: { age: { $gt: 25 } },
  *         page: 1,
@@ -201,7 +192,7 @@ async function _getAll<T extends Document>(
  * // }
  */
 function getAll<T extends Document>(table: string) {
-    return catchErrors(async function (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) {
+    return catchErrors(async function (req: Req, res: Res, next: Next) {
         if (!isGetAllOptions(req.db_options) || !req.db) return;
         const response: GetAllSuccessResponse = await _getAll<T>(table, req.db, req.db_options);
         res.status(200).json(response);

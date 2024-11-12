@@ -1,5 +1,6 @@
 import jwt, { Secret, TokenExpiredError, JsonWebTokenError, NotBeforeError } from 'jsonwebtoken';
 import { promisify } from 'util';
+import { toInt, toStr } from '../parsers';
 
 /**
  * A service for creating and verifying JSON Web Tokens (JWT) with a specified secret and expiration.
@@ -10,8 +11,8 @@ import { promisify } from 'util';
  * @class JwtService
  */
 class JwtService {
-    private secret: Secret;
-    private tokenExpirationInSeconds: number;
+    private secret?: Secret;
+    private tokenExpirationInSeconds?: number;
 
     /**
      * Creates an instance of JwtService.
@@ -23,12 +24,9 @@ class JwtService {
      * @example
      * const jwtService = new JwtService(process.env.JWT_SECRET, 3600); // Token expires in 1 hour
      */
-    constructor(secret: Secret, tokenExpirationInSeconds: number) {
-        if (!secret) {
-            throw new Error('JWT_SECRET environment variable is required');
-        }
-        this.secret = secret;
-        this.tokenExpirationInSeconds = tokenExpirationInSeconds;
+    constructor(secret?: Secret, tokenExpirationInSeconds?: number) {
+        this.secret = toStr(secret, 'secret') as Secret;
+        this.tokenExpirationInSeconds = toInt(tokenExpirationInSeconds, 3600);
     }
 
     /**
@@ -42,7 +40,7 @@ class JwtService {
      * console.log(token); // JWT token as a string
      */
     signToken(id: any): string {
-        return jwt.sign({ id }, this.secret, {
+        return jwt.sign({ id }, this.secret || 'secret', {
             expiresIn: this.tokenExpirationInSeconds,
         });
     }

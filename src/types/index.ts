@@ -6,7 +6,7 @@
  * request/response types in Express.
  */
 
-import { SortDirection, Db, UpdateFilter, Document } from 'mongodb';
+import { SortDirection, Db, UpdateFilter, Document, OptionalUnlessRequiredId, WithId } from 'mongodb';
 import { Errback, Request, Response, NextFunction } from 'express';
 import { CorsOptions } from './cors';
 
@@ -136,12 +136,11 @@ export interface CreateOneSuccessResponse {
 
 // Types for defining document update and creation objects.
 export type UpdateObject<T = Document> = UpdateFilter<T>; // Defines fields for updating a document.
-export type CreateObject<T = Document> = Partial<T>; // Allows creating a document with partial fields of T.
-
+export type CreateObject<T = Document> = OptionalUnlessRequiredId<WithId<T>>;
 /**
  * Extended request interface for attaching database and options to an Express request.
  */
-export interface VeryRequest<T = any, L extends string = string> extends Request {
+export interface Req<T = any, L extends string = string> extends Request {
     db?: Db; // MongoDB database instance attached to the request.
     db_options?: GetOneOptions<T> | CreateOneOptions<T> | UpdateOneOptions<T> | DeleteOneOptions<T> | GetAllOptions<T>; // Optional options for various CRUD operations.
     update_object?: UpdateObject<T>; // Optional update object for an update operation.
@@ -158,19 +157,19 @@ export { Db };
  */
 
 // Defines type aliases for simplified naming of Express Response and NextFunction
-export interface VeryResponse extends Response {}
-export interface VeryNextFunction extends NextFunction {}
+export interface Res extends Response {}
+export interface Next extends NextFunction {}
 
 // Error handler function type for custom error handling in Express
-export type ErrorHandler = (err: Errback, req: VeryRequest, res: VeryResponse, next: VeryNextFunction) => void;
+export type ErrorHandler = (err: Errback, req: Req, res: Res, next: Next) => void;
 
 // Type alias for a middleware function that uses custom request and response types
-export type Middleware = (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) => void;
+export type Middleware = (req: Req, res: Res, next: Next) => void;
 
 /**
  * Configuration options for initializing an Express server.
  */
-export interface VeryServerOptions {
+export interface ServerOptions {
     port: number; // Port for the server.
     corsOptions?: CorsOptions; // Optional CORS configuration.
     parseJson?: boolean; // Enable JSON parsing middleware if true.

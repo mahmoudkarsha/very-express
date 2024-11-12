@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+const nodemailer = require('nodemailer');
 
 /**
  * A service for sending emails with customizable sender, recipient, subject, and content.

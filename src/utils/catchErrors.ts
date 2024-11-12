@@ -1,4 +1,4 @@
-import { VeryRequest, VeryResponse, VeryNextFunction } from '../types';
+import { Req, Res, Next } from '../types';
 
 /**
  * Wraps an asynchronous route handler to catch errors and pass them to the next middleware.
@@ -12,7 +12,4 @@ import { VeryRequest, VeryResponse, VeryNextFunction } from '../types';
  *     res.send("Success!");
  * }));
  */
-export const catchErrors =
-    (fn: (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) => Promise<any>) =>
-    (req: VeryRequest, res: VeryResponse, next: VeryNextFunction) =>
-        Promise.resolve(fn(req, res, next)).catch(next);
+export const catchErrors = (fn: (req: Req<any, any>, res: Res, next: Next) => Promise<any>) => (req: Req, res: Res, next: Next) => Promise.resolve(fn(req, res, next)).catch(next);
